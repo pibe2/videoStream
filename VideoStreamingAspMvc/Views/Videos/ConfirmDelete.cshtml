@@ -1,0 +1,50 @@
+﻿@model VideoStreamingAspMvc.Models.Video
+
+@{
+    ViewBag.Title = "ConfirmDelete";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+
+
+<div class="row">
+    <div class="col">
+        <h2 class="h2 text-center">Do you relly want to delete this video?</h2>
+    </div>
+</div>
+
+
+<ul class="list-group">
+
+    <li class="list-group-item list-group-item-heading text-center">
+        <div class="row">
+            <span class="col ext-center"> @Model.title</span>
+        </div>
+    </li>
+
+    <li class="list-group-item">
+        <div class="row">
+            <span class="col-xs-2"> Genre:</span>
+            <span class="col-xs-10"> @Model.genre</span>
+        </div>
+    </li>
+
+    <li class="list-group-item">
+        <div class="row">
+            <span class="col-xs-2"> Description:</span>
+            <span class="col-xs-10"> @Model.description</span>
+        </div>
+    </li>
+
+</ul>
+
+
+@using (Html.BeginForm("SubmitDelete", "Videos", FormMethod.Post))
+{
+    <div class="row text-center">
+        <input type="submit" class="btn btn-danger col-xs-5" value="Yes, Delete it" />
+        @Html.ActionLink("No, back to videos", "Index", null, new { @class = "btn btn-default col-xs-4 pull-right" }) 
+    </div>
+
+    @Html.HiddenFor(m => m.id)
+}

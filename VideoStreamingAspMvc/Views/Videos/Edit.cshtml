@@ -1,0 +1,17 @@
+﻿@model VideoStreamingAspMvc.Models.Video
+
+@{
+    ViewBag.Title = "Edit Video";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+
+<h2>Edit <i>@String.Format("{0} (id {1})", Model.title, Model.id)</i></h2>
+
+<!-- the following line means that the form will be posted to the "SubmitEdit" Action of the "Video" Controller -->
+@using (Html.BeginForm("SubmitEdit", "Videos", FormMethod.Post, new { @class = "form" }))
+{
+    Html.RenderPartial("_VideoForm");
+
+    <input type="submit" class="btn btn-primary" value="Edit" />
+}

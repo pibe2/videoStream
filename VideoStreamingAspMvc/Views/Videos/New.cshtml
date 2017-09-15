@@ -1,0 +1,18 @@
+﻿@model VideoStreamingAspMvc.Models.Video
+
+@{
+    ViewBag.Title = "New Video";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+
+<h2>New Video</h2>
+
+<!-- the following line means that the form will be posted to the "SubmitNew" Action of the "Video" Controller -->
+@using (Html.BeginForm("SubmitNew", "Videos", FormMethod.Post, new { @class = "form" }))
+{
+
+    Html.RenderPartial("_VideoForm");    
+
+    <input type="submit" class="btn btn-primary" value="Add" />
+}
