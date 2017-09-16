@@ -26,7 +26,7 @@ namespace VideoStreamingAspMvc
             bundles.Add(new StyleBundle("~/Content/css").Include(
                       //"~/Content/bootstrap.css",
                       "~/Content/bootstrap-dark.css",
-                      "~/Content/site.css"));
+                      "~/Content/Site.css"));
         }
     }
 }

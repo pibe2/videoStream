@@ -19,6 +19,23 @@
 /* Set width on the form input elements since they're 100% wide by default */
 input,
 select,
-textarea {
+textarea, .file-control {
     max-width: 280px;
+    display: flex;
+}
+
+.file-control {
+    margin: 0;
+}
+
+.file-control-text {
+    flex-grow: 1;
+}
+
+.nomargin {
+    margin: 0;
+}
+
+.nopadding {
+    padding: 0;
 }

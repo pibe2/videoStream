@@ -17,9 +17,9 @@
         {
             <li class="list-group-item">
                 <div class="row">
-                    <span class="col-xs-10">@video.title (@video.genre)</span>
-                    @Html.ActionLink("Edit", "Edit", new { id = video.id }, new { @class = "btn btn-xs btn-warning col-xs-1" })
-                    @Html.ActionLink("Delete", "ConfirmDelete", new { id = video.id }, new { @class = "btn btn-xs btn-danger col-xs-1" })
+                    <span class="col-xs-10">@video.Title (@video.Genre)</span>
+                    @Html.ActionLink("Edit", "Edit", new { id = video.Id }, new { @class = "btn btn-xs btn-warning col-xs-1" })
+                    @Html.ActionLink("Delete", "ConfirmDelete", new { id = video.Id }, new { @class = "btn btn-xs btn-danger col-xs-1" })
                 </div>
             </li>
         }

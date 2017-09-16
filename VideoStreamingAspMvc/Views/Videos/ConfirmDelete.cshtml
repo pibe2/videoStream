@@ -18,21 +18,21 @@
 
     <li class="list-group-item list-group-item-heading text-center">
         <div class="row">
-            <span class="col ext-center"> @Model.title</span>
+            <span class="col ext-center"> @Model.Title</span>
         </div>
     </li>
 
     <li class="list-group-item">
         <div class="row">
             <span class="col-xs-2"> Genre:</span>
-            <span class="col-xs-10"> @Model.genre</span>
+            <span class="col-xs-10"> @Model.Genre</span>
         </div>
     </li>
 
     <li class="list-group-item">
         <div class="row">
             <span class="col-xs-2"> Description:</span>
-            <span class="col-xs-10"> @Model.description</span>
+            <span class="col-xs-10"> @Model.Description</span>
         </div>
     </li>
 
@@ -46,5 +46,5 @@
         @Html.ActionLink("No, back to videos", "Index", null, new { @class = "btn btn-default col-xs-4 pull-right" }) 
     </div>
 
-    @Html.HiddenFor(m => m.id)
+    @Html.HiddenFor(m => m.Id)
 }

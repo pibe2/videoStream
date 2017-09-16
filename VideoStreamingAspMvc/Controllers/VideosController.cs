@@ -4,6 +4,7 @@ using System.Linq;
 using System.Web;
 using System.Web.Mvc;
 using VideoStreamingAspMvc.Models;
+using System.IO;
 
 namespace VideoStreamingAspMvc.Controllers
 {
@@ -24,6 +25,7 @@ namespace VideoStreamingAspMvc.Controllers
             return View(videos);
         }
 
+
         public ActionResult New()
         {
             return View();
@@ -32,13 +34,32 @@ namespace VideoStreamingAspMvc.Controllers
         [HttpPost]
         public ActionResult SubmitNew(Video video)
         {
+            HttpPostedFileBase videoFile = Request.Files[0];
+
+            if (videoFile == null || videoFile.ContentLength <= 0)
+                // TODO: HANDLE BETTER
+                return HttpNotFound("no file uploaded");
+
+
+            string videoFileName = Path.GetFileName(videoFile.FileName);
+            string videoFilePath = Path.Combine(Server.MapPath("~/Storage/"), videoFileName);
+            videoFile.SaveAs(videoFilePath);
+
+            // TODO video processing with ffmpeg (extract thumbnail)
+
+            video.VideoFileName = videoFileName;
+            video.ImageFileName = Path.GetFileNameWithoutExtension(videoFileName) + ".jpg";
+            video.Length = 20;
+
             _dbContext.Videos.Add(video);
             _dbContext.SaveChanges();
+
             return RedirectToAction("Index");
         }
 
+
         public ActionResult Edit(int id) {
-            var video = _dbContext.Videos.SingleOrDefault(v => v.id == id); // linq-library db query
+            var video = _dbContext.Videos.SingleOrDefault(v => v.Id == id); // linq-library db query
 
             if (video == null)
                 return HttpNotFound(String.Format("Video with id {0} not found", id));  // video doesn't exist in db
@@ -49,14 +70,14 @@ namespace VideoStreamingAspMvc.Controllers
         [HttpPost]
         public ActionResult SubmitEdit(Video editInfo)
         {
-            Video videoInDb = _dbContext.Videos.SingleOrDefault(v => v.id == editInfo.id);  // linq-library db query
+            Video videoInDb = _dbContext.Videos.SingleOrDefault(v => v.Id == editInfo.Id);  // linq-library db query
 
             if (videoInDb == null)
-                return HttpNotFound(String.Format("Video with id {0} not found", editInfo.id));  // video doesn't exist in db
+                return HttpNotFound(String.Format("Video with id {0} not found", editInfo.Id));  // video doesn't exist in db
 
-            videoInDb.title = editInfo.title;
-            videoInDb.description = editInfo.description;
-            videoInDb.genre = editInfo.genre;
+            videoInDb.Title = editInfo.Title;
+            videoInDb.Description = editInfo.Description;
+            videoInDb.Genre = editInfo.Genre;
             _dbContext.SaveChanges();
 
             return RedirectToAction("Index");
@@ -64,7 +85,7 @@ namespace VideoStreamingAspMvc.Controllers
 
         public ActionResult ConfirmDelete(int id)
         {
-            Video videoInDb = _dbContext.Videos.SingleOrDefault(v => v.id == id);  // linq-library db query
+            Video videoInDb = _dbContext.Videos.SingleOrDefault(v => v.Id == id);  // linq-library db query
 
             if (videoInDb == null)
                 return HttpNotFound(String.Format("Video with id {0} not found", id));  // video doesn't exist in db
@@ -75,7 +96,7 @@ namespace VideoStreamingAspMvc.Controllers
         [HttpPost]
         public ActionResult SubmitDelete(int id)
         {
-            Video videoInDb = _dbContext.Videos.SingleOrDefault(v => v.id == id);  // linq-library db query
+            Video videoInDb = _dbContext.Videos.SingleOrDefault(v => v.Id == id);  // linq-library db query
 
             if (videoInDb == null)
                 return HttpNotFound(String.Format("Video with id {0} not found", id));  // video doesn't exist in db
@@ -85,6 +106,15 @@ namespace VideoStreamingAspMvc.Controllers
 
             return RedirectToAction("Index");
         }
+
+        /** TODO: code to open saved file
+        public ActionResult ShowVideos(Video editInfo)
+        {
+            FileStream SavedFile = new FileStream(Server.MapPath("~/Storage/" + editInfo.FilePath), FileMode.Open);
+            return View(editInfo);
+
+        }
+        **/
 
     }
 }

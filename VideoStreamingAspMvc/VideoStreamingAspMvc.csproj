@@ -200,6 +200,10 @@
     <Compile Include="Migrations\201709131948296_Initial.Designer.cs">
       <DependentUpon>201709131948296_Initial.cs</DependentUpon>
     </Compile>
+    <Compile Include="Migrations\201709160041185_VideoModel_With_Files.cs" />
+    <Compile Include="Migrations\201709160041185_VideoModel_With_Files.Designer.cs">
+      <DependentUpon>201709160041185_VideoModel_With_Files.cs</DependentUpon>
+    </Compile>
     <Compile Include="Migrations\Configuration.cs" />
     <Compile Include="Models\AccountViewModels.cs" />
     <Compile Include="Models\IdentityModels.cs" />
@@ -278,6 +282,7 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />
+    <Folder Include="Storage\" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="fonts\glyphicons-halflings-regular.woff" />
@@ -295,6 +300,9 @@
   <ItemGroup>
     <EmbeddedResource Include="Migrations\201709131948296_Initial.resx">
       <DependentUpon>201709131948296_Initial.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\201709160041185_VideoModel_With_Files.resx">
+      <DependentUpon>201709160041185_VideoModel_With_Files.cs</DependentUpon>
     </EmbeddedResource>
   </ItemGroup>
   <PropertyGroup>
