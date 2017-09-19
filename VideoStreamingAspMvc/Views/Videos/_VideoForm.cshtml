@@ -21,13 +21,13 @@
     <div class="col-sm-offset-2">
 
     <div class="file-control">
-        <label class="btn btn-default text-center" for="videoFile">
-            <input id="videoFile" name="videoFile" type="file" style="display:none"
-                   onchange="$('#fileName').val(this.files[0].name)">
+        <label class="btn btn-default text-center" for="videoFileInput">
+            <input id="videoFileInput" name="videoFile" type="file" style="display:none"
+                onchange="videoFileSelected(this)">
             Browse
         </label>
 
-        <input type="text" class="file-control-text" id="fileName" disabled/>
+        <input type="text" class="file-control-text" id="fileNameLabel" disabled/>
     </div>
 
     </div>
@@ -39,3 +39,34 @@
     @Html.HiddenFor(m => m.Id)
     <input type="submit" class="btn btn-primary" value="Save" />
 </div>
+
+
+@Scripts.Render("~/bundles/jquery")
+<script type="text/javascript">
+
+    function videoFileSelected(fileInput) {
+        var file = fileInput.files[0];
+        
+        $('#fileNameLabel').val(file.name); // update fileNameLabel
+
+        formData = new FormData();
+        formData.append(file.name, file);
+
+        var xhr = new XMLHttpRequest();
+
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState === 4 && xhr.status === 200) {
+                console.log(xhr.responseText);
+            }
+        }
+
+        xhr.upload.onprogress = function (e) {
+            // it will never come inside here
+            console.log("progress:", e.loaded, "out of", e.total, "(", parseInt((e.loaded/e.total)*100),"%)");
+        }
+
+        xhr.open("POST", "@Url.Action("UploadVideo", "Videos")");
+        xhr.send(formData);
+    }
+</script>
+

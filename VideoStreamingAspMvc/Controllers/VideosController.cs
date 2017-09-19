@@ -5,6 +5,7 @@ using System.Web;
 using System.Web.Mvc;
 using VideoStreamingAspMvc.Models;
 using System.IO;
+using System.Diagnostics;
 
 namespace VideoStreamingAspMvc.Controllers
 {
@@ -41,11 +42,38 @@ namespace VideoStreamingAspMvc.Controllers
                 return HttpNotFound("no file uploaded");
 
 
+            // TODO video processing with ffmpeg (extract thumbnail)
+
             string videoFileName = Path.GetFileName(videoFile.FileName);
             string videoFilePath = Path.Combine(Server.MapPath("~/Storage/"), videoFileName);
             videoFile.SaveAs(videoFilePath);
 
-            // TODO video processing with ffmpeg (extract thumbnail)
+            try
+            {
+                Process proc = new Process
+                {
+                    StartInfo = new ProcessStartInfo
+                    {
+                        FileName = "C:/ffmpeg/bin/ffmpeg.exe",
+                        Arguments = "-help",
+                        UseShellExecute = false,
+                        RedirectStandardOutput = true,
+                        CreateNoWindow = true
+                    }
+                };
+
+                proc.Start();
+                Debug.WriteLine("---------------------success----------------------");
+                while (!proc.StandardOutput.EndOfStream)
+                {
+                    string line = proc.StandardOutput.ReadLine();
+                    Console.WriteLine(line);
+                    Debug.WriteLine(line);
+                }
+            }
+            catch (Exception e) {
+                Debug.WriteLine("```````````````````````Exception Caught````````````````````````````````\r\n{0}", e);
+            }
 
             video.VideoFileName = videoFileName;
             video.ImageFileName = Path.GetFileNameWithoutExtension(videoFileName) + ".jpg";
@@ -57,6 +85,11 @@ namespace VideoStreamingAspMvc.Controllers
             return RedirectToAction("Index");
         }
 
+
+        public JsonResult UploadVideo()
+        {
+            return Json("server: file uploaded successfully");
+        }
 
         public ActionResult Edit(int id) {
             var video = _dbContext.Videos.SingleOrDefault(v => v.Id == id); // linq-library db query
