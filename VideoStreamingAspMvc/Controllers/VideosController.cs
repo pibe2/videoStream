@@ -55,20 +55,21 @@ namespace VideoStreamingAspMvc.Controllers
         [HttpPost]
         public JsonResult UploadVideoAjax(HttpPostedFileBase videoFile, int Id)
         {
-            /*
-            HttpPostedFileBase videoFile = Request.Files[0];
-
             if (videoFile == null || videoFile.ContentLength <= 0)
-                // TODO: HANDLE BETTER
-                return HttpNotFound("no file uploaded");
+                return Json(String.Format("no file uploaded")); // TODO: HANDLE BETTER
 
-
-            // TODO video processing with ffmpeg (extract thumbnail)
+            Video video = _dbContext.Videos.SingleOrDefault(v => v.Id == Id);
+            if (video == null)
+                return Json(String.Format("Video with id {0} not found", Id)); // TODO: HANDLE BETTER
 
             string videoFileName = Path.GetFileName(videoFile.FileName);
+
+
             string videoFilePath = Path.Combine(Server.MapPath("~/Storage/"), videoFileName);
             videoFile.SaveAs(videoFilePath);
 
+            /*
+            // TODO video processing with ffmpeg (extract thumbnail) async
             try
             {
                 Process proc = new Process
@@ -95,13 +96,13 @@ namespace VideoStreamingAspMvc.Controllers
             catch (Exception e) {
                 Debug.WriteLine("```````````````````````Exception Caught````````````````````````````````\r\n{0}", e);
             }
+            */
 
             video.VideoFileName = videoFileName;
             video.ImageFileName = Path.GetFileNameWithoutExtension(videoFileName) + ".jpg";
             video.Length = 20;
-            */
 
-            return Json(String.Format("server: file uploaded successfully for video {0}", Id));
+            return Json(String.Format("server: file {0} uploaded successfully for video {1}", videoFileName, Id));
         }
 
         public ActionResult Edit(int id) {
