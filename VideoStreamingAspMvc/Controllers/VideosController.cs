@@ -35,6 +35,26 @@ namespace VideoStreamingAspMvc.Controllers
         [HttpPost]
         public ActionResult SubmitNew(Video video)
         {
+            _dbContext.Videos.Add(video);
+            _dbContext.SaveChanges();
+
+            return RedirectToAction("UploadVideo", new { id = video.Id });
+        }
+
+
+        public ActionResult UploadVideo(int id)
+        {
+            var video = _dbContext.Videos.SingleOrDefault(v => v.Id == id); // linq-library db query
+
+            if (video == null)
+                return HttpNotFound(String.Format("Video with id {0} not found", id));  // video doesn't exist in db
+
+            return View(video);
+        }
+
+        public JsonResult UploadVideoAjax(int id)
+        {
+            /*
             HttpPostedFileBase videoFile = Request.Files[0];
 
             if (videoFile == null || videoFile.ContentLength <= 0)
@@ -78,16 +98,8 @@ namespace VideoStreamingAspMvc.Controllers
             video.VideoFileName = videoFileName;
             video.ImageFileName = Path.GetFileNameWithoutExtension(videoFileName) + ".jpg";
             video.Length = 20;
+            */
 
-            _dbContext.Videos.Add(video);
-            _dbContext.SaveChanges();
-
-            return RedirectToAction("Index");
-        }
-
-
-        public JsonResult UploadVideo()
-        {
             return Json("server: file uploaded successfully");
         }
 
@@ -113,7 +125,7 @@ namespace VideoStreamingAspMvc.Controllers
             videoInDb.Genre = editInfo.Genre;
             _dbContext.SaveChanges();
 
-            return RedirectToAction("Index");
+            return RedirectToAction("UploadVideo", new { id = editInfo.Id });
         }
 
         public ActionResult ConfirmDelete(int id)

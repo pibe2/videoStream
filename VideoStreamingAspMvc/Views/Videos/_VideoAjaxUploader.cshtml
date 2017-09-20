@@ -1,0 +1,83 @@
+﻿@model VideoStreamingAspMvc.Models.Video
+
+<!-- file uploaded with ajax; form tag only for styling purposes -->
+<form class="form-horizontal">
+    <div class="form-group row">
+        <div class="col-sm-offset-2">
+            <div class="file-control-wide">
+                <label class="btn btn-default text-center" for="videoFileInput">
+                    <input id="videoFileInput" name="videoFile" type="file" style="display:none"
+                        onchange="videoFileSelected(this)" />
+                    Browse
+                </label>
+                <input type="text" class="file-control-text" id="fileNameLabel" disabled />
+            </div>
+        </div>
+    </div>
+
+    <div class="form-group">
+        @Html.HiddenFor(m => m.Id)
+
+        <div class="col-sm-offset-2">
+            <button type="button" class="btn btn-primary" onclick="uploadVideoAjax(); return false;">Upload</button>
+            @Html.ActionLink("Save Without Video", "Index", "Videos", new { @class="btn btn-default" })
+        </div>
+    </div>
+</form>
+
+
+<script type="text/javascript">
+
+    function videoFileSelected(fileInput) {
+        var file = fileInput.files[0];
+        $("#fileNameLabel").val(file.name); // update fileNameLabel
+    }
+
+    function uploadVideoAjax() {
+        var fileInput = document.getElementById("videoFileInput");
+        var file = fileInput.files[0];
+
+        formData = new FormData();
+        formData.append(file.name, file);
+
+        var xhr = new XMLHttpRequest();
+
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState === 4 && xhr.status === 200) {
+                console.log(xhr.responseText);
+            }
+        }
+
+
+        xhr.upload.addEventListener("progress", function (e) {
+            // it will never come inside here
+            if (e.lengthComputable) {
+                console.log("progress:", e.loaded, "out of", e.total, "(", parseInt((e.loaded / e.total) * 100), "%)");
+            }
+            else {
+                console.log("upload progress is not computable");
+            }
+
+        });
+
+        xhr.upload.addEventListener("error", function (e) {
+            console.log("upload error: ");
+            console.log(e);
+        });
+ 
+
+        xhr.upload.addEventListener("abort", function (e) {
+            console.log("upload aborted: ");
+            console.log(e);
+        });
+
+
+        xhr.addEventListener("timeout", function (e) {
+            console.log("upload timed out: ");
+            console.log(e);
+        });
+
+        xhr.open("POST", "@Url.Action("UploadVideoAjax", "Videos", new { id = Model.Id })");
+        xhr.send(formData);
+    }
+</script>

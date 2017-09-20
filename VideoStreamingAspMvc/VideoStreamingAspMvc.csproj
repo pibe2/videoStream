@@ -279,6 +279,8 @@
     <Content Include="Views\Videos\Edit.cshtml" />
     <Content Include="Views\Videos\_VideoForm.cshtml" />
     <Content Include="Views\Videos\ConfirmDelete.cshtml" />
+    <Content Include="Views\Videos\_VideoAjaxUploader.cshtml" />
+    <Content Include="Views\Videos\UploadVideo.cshtml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />

@@ -1,0 +1,12 @@
+﻿@model VideoStreamingAspMvc.Models.Video
+
+@{
+    ViewBag.Title = "Upload Video";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2 class="h2">Upload Video</h2>
+
+@{
+    Html.RenderPartial("_VideoAjaxUploader");    // faster than @Html.Partial() apparently
+}
