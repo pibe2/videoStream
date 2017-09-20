@@ -52,7 +52,8 @@ namespace VideoStreamingAspMvc.Controllers
             return View(video);
         }
 
-        public JsonResult UploadVideoAjax(int id)
+        [HttpPost]
+        public JsonResult UploadVideoAjax(HttpPostedFileBase videoFile, int Id)
         {
             /*
             HttpPostedFileBase videoFile = Request.Files[0];
@@ -100,7 +101,7 @@ namespace VideoStreamingAspMvc.Controllers
             video.Length = 20;
             */
 
-            return Json("server: file uploaded successfully");
+            return Json(String.Format("server: file uploaded successfully for video {0}", Id));
         }
 
         public ActionResult Edit(int id) {

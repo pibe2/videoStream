@@ -1,12 +1,19 @@
 ﻿@model VideoStreamingAspMvc.Models.Video
 
-<!-- file uploaded with ajax; form tag only for styling purposes -->
-<form class="form-horizontal">
+<!-- file uploaded with ajax; form tag only for styling purposes 
+<form class="form-horizontal" method="post" >
+-->
+
+@using (Html.BeginForm(
+    actionName: "UploadVideoAjax", controllerName: "Videos", method: FormMethod.Post,
+    //routeValues: new { id = 1},
+    htmlAttributes: new { @class = "form-horizontal", @enctype="multipart/form-data", @role="form", @id="theForm"}))
+{
     <div class="form-group row">
         <div class="col-sm-offset-2">
             <div class="file-control-wide">
-                <label class="btn btn-default text-center" for="videoFileInput">
-                    <input id="videoFileInput" name="videoFile" type="file" style="display:none"
+                <label class="btn btn-default text-center" for="videoFile">
+                    <input id="videoFile" name="videoFile" type="file" style="display:none"
                         onchange="videoFileSelected(this)" />
                     Browse
                 </label>
@@ -23,7 +30,7 @@
             @Html.ActionLink("Save Without Video", "Index", "Videos", new { @class="btn btn-default" })
         </div>
     </div>
-</form>
+}
 
 
 <script type="text/javascript">
@@ -34,12 +41,11 @@
     }
 
     function uploadVideoAjax() {
-        var fileInput = document.getElementById("videoFileInput");
-        var file = fileInput.files[0];
+        var theForm = $("#theForm");
 
-        formData = new FormData();
-        formData.append(file.name, file);
-
+        // since the form control names and ids match the controller parameter names, 
+        // they will be mapped to them!
+        var formData = new FormData(theForm[0]);
         var xhr = new XMLHttpRequest();
 
         xhr.onreadystatechange = function () {
@@ -47,7 +53,6 @@
                 console.log(xhr.responseText);
             }
         }
-
 
         xhr.upload.addEventListener("progress", function (e) {
             // it will never come inside here
@@ -64,20 +69,14 @@
             console.log("upload error: ");
             console.log(e);
         });
- 
 
-        xhr.upload.addEventListener("abort", function (e) {
-            console.log("upload aborted: ");
-            console.log(e);
-        });
-
-
-        xhr.addEventListener("timeout", function (e) {
-            console.log("upload timed out: ");
-            console.log(e);
-        });
-
-        xhr.open("POST", "@Url.Action("UploadVideoAjax", "Videos", new { id = Model.Id })");
+        xhr.open(theForm.attr("method"), theForm.attr("action"));
         xhr.send(formData);
     }
+
+    function videoFileSelected(fileInput) {
+        var file = fileInput.files[0];
+        $("#fileNameLabel").val(file.name); // update fileNameLabel
+    }
+
 </script>
