@@ -53,21 +53,22 @@ namespace VideoStreamingAspMvc.Controllers
         }
 
         [HttpPost]
-        public JsonResult UploadVideoAjax(HttpPostedFileBase videoFile, int Id)
+        public JsonResult UploadVideoAjax(/*HttpPostedFileBase videoFile, int Id*/)
         {
+            int Id = 1;
+            HttpPostedFileBase videoFile = Request.Files[0];
+
             if (videoFile == null || videoFile.ContentLength <= 0)
-                return Json(String.Format("no file uploaded")); // TODO: HANDLE BETTER
+                return Json(String.Format("no file uploaded"));
 
             Video video = _dbContext.Videos.SingleOrDefault(v => v.Id == Id);
             if (video == null)
-                return Json(String.Format("Video with id {0} not found", Id)); // TODO: HANDLE BETTER
+                return Json(String.Format("Video with id {0} not found", Id));
 
             string videoFileName = Path.GetFileName(videoFile.FileName);
-
-
             string videoFilePath = Path.Combine(Server.MapPath("~/Storage/"), videoFileName);
-            videoFile.SaveAs(videoFilePath);
 
+            videoFile.SaveAs(videoFilePath);
             /*
             // TODO video processing with ffmpeg (extract thumbnail) async
             try

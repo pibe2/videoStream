@@ -6,7 +6,7 @@
     controllerName: "Videos",
     method: FormMethod.Post,
     htmlAttributes: new { @class = "form-horizontal", @enctype = "multipart/form-data", @role = "form", @id = "theForm" }
-)){
+)) {
     <div class="form-group row">
         <div class="col-sm-offset-2">
             <div class="file-control-wide">
@@ -34,11 +34,109 @@
 <script type="text/javascript">
 
     function videoFileSelected(fileInput) {
-        var file = fileInput.files[0];
+        let file = fileInput.files[0];
         if (file)
             $("#fileNameLabel").val(file.name); // update fileNameLabel
     }
 
+
+    function uploadVideoAjax() {
+        let fileInput = $("#videoFile")[0];
+        let file = fileInput.files[0]
+
+        let maxFileSize = 4 * 1024 * 1024 * 1024; // 4GB
+        if (!file || file.size == 0 || file.size > maxFileSize) {
+            console.log("empty/no file uploaded, or file size too large (larger than 4GB)");
+            console.log("try uploading a non empty file not greater than 4GB in size");
+            return;
+        }
+
+        uploadFile(file);
+    }
+
+    function uploadFile(file) {
+        let regChunkSize = 50 * 1024 * 1024; // split file into 50mb chunks
+        let numRegChunks = Math.trunc(file.size/regChunkSize);
+        let numChunks = numRegChunks;
+
+        let lastChunkSize = file.size - (numRegChunks * regChunkSize);
+
+        if (lastChunkSize > 0)
+            numChunks = numRegChunks + 1;
+
+        let chunkUploadTasks = [];
+        for (let i = 0; i < numRegChunks; i++) {
+            let chunkStart = i * regChunkSize;
+            let chunkEnd = (i + 1) * regChunkSize;
+            let chunkNo = i + 1;
+            let chunk = file.slice(chunkStart, chunkEnd);
+            chunkUploadTasks.push(
+                function () { return uploadChunk(chunk, chunkNo, numChunks); }
+            );
+        }
+        // add last chunk task
+        if (lastChunkSize > 0) {    // upload last chunk
+            let lastChunk = file.slice(file.size - lastChunkSize, file.size);
+            chunkUploadTasks.push(
+                function () { return uploadChunk(lastChunk, numChunks, numChunks); }
+            );
+        }
+
+        // make sure all but the last chunk are uploaded, then upload the last one so server knows when to merge
+        let firstChunkUploadTasks = chunkUploadTasks.slice(0, chunkUploadTasks.length - 1);
+        let firstTasksAjaxResults = firstChunkUploadTasks.map(function (task) { return task(); })
+        let lastChunkUploadTask = chunkUploadTasks[chunkUploadTasks.length - 1];
+        $.when.apply($, firstTasksAjaxResults).then(lastChunkUploadTask);
+    }
+
+    function uploadChunk(chunk, chunkNo, numChunks) {
+        // file.slice doesn't actually exclude tha last byte (at chunk end)
+        let chunkName = "@Model.Id" + "_" + chunkNo + "_" + numChunks + "_" + file.name;
+       
+        let formData = new FormData();
+        formData.append('file', chunk, chunkName);
+
+        let postUrl = $("#theForm").attr("action");
+
+        return $.ajax({     // returns the ajax call result so we can wait for it
+            type: "POST",
+            url: postUrl,
+            contentType: false,
+            processData: false,
+            data: formData,
+            success: function (data) {
+                    console.log("success in chunk upload", chunkNo, "out of", numChunks);
+                    console.log(data);
+                },
+            error: function (err) {
+                    console.log("error in chunk upload", chunkNo, "out of", numChunks);
+                    console.log(error);
+                }
+        });
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    /*
     function uploadVideoAjax() {
         var theForm = $("#theForm");
 
@@ -87,4 +185,5 @@
         xhr.open(theForm.attr("method"), theForm.attr("action"));
         xhr.send(formData);
     }
+    */
 </script>
