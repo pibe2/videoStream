@@ -51,68 +51,8 @@
             return;
         }
 
-        //uploadVideoAjax(file);
         uploadVideoXhr(file);
     }
-
-    function uploadVideoAjax(file) {
-        let regChunkSize = 50 * 1024 * 1024; // split file into 50mb chunks
-        let numRegChunks = Math.trunc(file.size/regChunkSize);
-        let numChunks = numRegChunks;
-
-        let lastChunkSize = file.size - (numRegChunks * regChunkSize);
-
-        if (lastChunkSize > 0)
-            numChunks = numRegChunks + 1;
-
-        let chunkUploadTasks = [];
-        for (let i = 0; i < numRegChunks; i++) {
-            chunkUploadTasks.push(
-                function () { return uploadChunkAjax(file, i * regChunkSize, (i + 1) * regChunkSize, i + 1, numChunks); }
-            );
-        }
-        // add last chunk task
-        if (lastChunkSize > 0) {    // upload last chunk
-            chunkUploadTasks.push(
-                function () { return uploadChunkAjax(file, file.size - lastChunkSize, file.size, numChunks, numChunks); }
-            );
-        }
-
-        // make sure all but the last chunk are uploaded, then upload the last one so server knows when to merge
-        let firstChunkUploadTasks = chunkUploadTasks.slice(0, chunkUploadTasks.length - 1);
-        let firstTasksAjaxResults = firstChunkUploadTasks.map(function (task) { return task(); })
-        let lastChunkUploadTask = chunkUploadTasks[chunkUploadTasks.length - 1];
-        $.when.apply($, firstTasksAjaxResults).then(lastChunkUploadTask);
-    }
-
-    function uploadChunkAjax(file, chunkStart, chunkEnd, chunkNo, numChunks) {
-        // file.slice doesn't actually exclude tha last byte (at chunk end)
-        let chunk = file.slice(chunkStart, chunkEnd);
-
-        let chunkName = "@Model.Id" + "-" + numChunks + "-" + chunkNo + "-" + file.name;
-       
-        let formData = new FormData();
-        formData.append('file', chunk, chunkName);
-
-        let postUrl = $("#theForm").attr("action");
-
-        return $.ajax({     // returns the ajax call result so we can wait for it
-            type: "POST",
-            url: postUrl,
-            contentType: false,
-            processData: false,
-            data: formData,
-            success: function (data) {
-                    console.log("success in chunk upload", chunkNo, "out of", numChunks);
-                    console.log(data);
-                },
-            error: function (err) {
-                    console.log("error in chunk upload", chunkNo, "out of", numChunks);
-                    console.log(error);
-                }
-        });
-    }
-
 
     function uploadVideoXhr(file) {
         let regChunkSize = 50 * 1024 * 1024; // split file into 50mb chunks
@@ -200,29 +140,11 @@
 
         });
 
-        xhr.upload.addEventListener("error", function (e) {
+        xhr.addEventListener("error", function (e) {
             console.log("upload error: ");
             console.log(e);
             reject("upload error: " + e);
         });
-
-        xhr.addEventListener("error", function (e) {
-            console.log("post error occurred");
-            reject("upload error: " + e);
-        });
-
-        xhr.addEventListener("timeout", function (e) {
-            console.log("timed out: ");
-            console.log(e);
-            reject("upload error: " + e);
-        });
-
-        xhr.upload.addEventListener("timeout", function (e) {
-            console.log("timed out 2: ");
-            console.log(e);
-            reject("upload error: " + e);
-        });
-
 
         xhr.open("POST", postUrl, true); // true = run it synchronously
         xhr.send(formData);
