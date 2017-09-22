@@ -52,23 +52,62 @@ namespace VideoStreamingAspMvc.Controllers
             return View(video);
         }
 
-        [HttpPost]
-        public JsonResult UploadVideoAjax(/*HttpPostedFileBase videoFile, int Id*/)
+        private bool ExtractInfoFromFileChunkName(string chunkName, out string fileName, out int videoId, out int chunkCount, out int chunkNo) {
+            chunkNo = chunkCount = videoId = -1;
+            fileName = "";
+
+            char[] delimiter = { '-' };
+            string[] chunkNameTokens = chunkName.Split(delimiter, 4);
+            if (chunkNameTokens.Count() < 4)
+                return false;
+
+            if (!int.TryParse(chunkNameTokens[0], out videoId))
+                return false;
+            if (!int.TryParse(chunkNameTokens[1], out chunkCount))
+                return false;
+            if (!int.TryParse(chunkNameTokens[2], out chunkNo))
+                return false;
+
+            fileName = chunkNameTokens[3];
+            
+            return true;
+        }
+
+        private void MergeChunks(string fileName, int id)
         {
-            int Id = 1;
-            HttpPostedFileBase videoFile = Request.Files[0];
+        }
 
-            if (videoFile == null || videoFile.ContentLength <= 0)
+        [HttpPost]
+        public JsonResult UploadVideoChunkAjax()
+        {
+            HttpPostedFileBase fileChunk = Request.Files[0];
+
+            string videoFileName;
+            int id, chunkCount, chunkNo;
+
+            if (!ExtractInfoFromFileChunkName(fileChunk.FileName, out videoFileName, out id, out chunkCount, out chunkNo))
+            {
+                // delete directory
+                return Json(String.Format("file chunk has invalid name"));
+            }
+
+            if (fileChunk == null || fileChunk.ContentLength == 0)
+            {
+                // delete directory
                 return Json(String.Format("no file uploaded"));
+            }
 
-            Video video = _dbContext.Videos.SingleOrDefault(v => v.Id == Id);
+            Video video = _dbContext.Videos.SingleOrDefault(v => v.Id == id);
             if (video == null)
-                return Json(String.Format("Video with id {0} not found", Id));
+            {
+                // delete directory
+                return Json(String.Format("Video with id {0} not found", id));
+            }
 
-            string videoFileName = Path.GetFileName(videoFile.FileName);
-            string videoFilePath = Path.Combine(Server.MapPath("~/Storage/"), videoFileName);
+            string chunkName = Path.GetFileName(fileChunk.FileName);
+            string chunkPath = Path.Combine(Server.MapPath("~/Storage/"), chunkName);
 
-            videoFile.SaveAs(videoFilePath);
+            fileChunk.SaveAs(chunkPath);
             /*
             // TODO video processing with ffmpeg (extract thumbnail) async
             try
@@ -97,13 +136,16 @@ namespace VideoStreamingAspMvc.Controllers
             catch (Exception e) {
                 Debug.WriteLine("```````````````````````Exception Caught````````````````````````````````\r\n{0}", e);
             }
-            */
 
             video.VideoFileName = videoFileName;
             video.ImageFileName = Path.GetFileNameWithoutExtension(videoFileName) + ".jpg";
             video.Length = 20;
+            */
 
-            return Json(String.Format("server: file {0} uploaded successfully for video {1}", videoFileName, Id));
+            if (chunkCount == chunkNo)
+                MergeChunks(videoFileName, id);
+
+            return Json(String.Format("server: file {0} uploaded successfully for video {1}", chunkName, id));
         }
 
         public ActionResult Edit(int id) {
