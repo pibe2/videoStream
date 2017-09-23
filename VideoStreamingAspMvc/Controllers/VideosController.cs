@@ -9,10 +9,85 @@ using System.Diagnostics;
 
 namespace VideoStreamingAspMvc.Controllers
 {
+    public class VideoUploadControl
+    {
+        public bool isMergeControl { get; set; }
+        public string fileName { get; set; }
+        public int numChunks { get; set; }
+        public int videoId { get; set; }
+    }
+
     public class VideosController : Controller
     {
-
         private ApplicationDbContext _dbContext;
+
+        private void getVideoDirPaths(string fileName, int videoId, out string chunksDirPath , out string mergeDirPath)
+        {
+            string baseFileName = Path.GetFileName(fileName);
+
+            string storagePath = Server.MapPath("~/Storage/" + videoId + "_" + baseFileName);
+            chunksDirPath = Path.Combine(storagePath, "chunks");
+            mergeDirPath = Path.Combine(storagePath, "merge");
+        }
+
+        private bool mergeFileChunks(VideoUploadControl info, string chunksDirPath, string mergeDirPath) {
+            string[] chunkPaths = new string[info.numChunks];
+            for (int i = 0; i < info.numChunks; ++i)
+            {
+                string chunkName = getChunkName(info.videoId, info.fileName, i + 1, info.numChunks);
+                string chunkPath = Path.Combine(chunksDirPath, chunkName);
+                if (!System.IO.File.Exists(chunkPath))
+                    return false;
+                chunkPaths[i] = chunkPath;
+            }
+
+            if (Directory.Exists(mergeDirPath))
+                Directory.Delete(mergeDirPath, true);  // TODO: do we really want this
+            Directory.CreateDirectory(mergeDirPath);
+
+            string mergedFilePath = Path.Combine(mergeDirPath, info.fileName);
+            try
+            {
+                using (FileStream mergeStream = new FileStream(mergedFilePath, FileMode.Create))
+                    for (int i = 0; i < info.numChunks; ++i)
+                    {
+                        using (FileStream chunkStream = new FileStream(chunkPaths[i], FileMode.Open))
+                            chunkStream.CopyTo(mergeStream);
+                    }
+            }
+            catch (IOException e)
+            {
+                throw e;
+            }
+
+            processVideo(mergedFilePath);
+            return true;
+        }
+
+        // to do this async?
+        private void processVideo(string videoPath) {
+        }
+
+        [HttpPost]
+        public JsonResult UploadControl(VideoUploadControl fileInfo)
+        {
+            string chunksDirPath, mergeDirPath;
+            getVideoDirPaths(fileInfo.fileName, fileInfo.videoId, out chunksDirPath, out mergeDirPath);
+
+            if (fileInfo.isMergeControl) {
+                mergeFileChunks(fileInfo, chunksDirPath, mergeDirPath);
+                return Json(String.Format("server: merge control message for upload of file {0}, video {1}", fileInfo.fileName, fileInfo.videoId));
+            }
+
+
+            else // file chunks about to be uploaded create upload directory
+            {
+                if (Directory.Exists(chunksDirPath))
+                    Directory.Delete(chunksDirPath, true);  // TODO: do we really want this
+                Directory.CreateDirectory(chunksDirPath);
+                return Json(String.Format("server: start upload control message for upload of file {0}, video {1}", fileInfo.fileName, fileInfo.videoId));
+            }
+        }
 
         public VideosController()
         {
@@ -58,6 +133,7 @@ namespace VideoStreamingAspMvc.Controllers
 
             char[] delimiter = { '-' };
             string[] chunkNameTokens = chunkName.Split(delimiter, 4);
+
             if (chunkNameTokens.Count() < 4)
                 return false;
 
@@ -69,82 +145,37 @@ namespace VideoStreamingAspMvc.Controllers
                 return false;
 
             fileName = chunkNameTokens[3];
-            
             return true;
         }
 
-        private void MergeChunks(string fileName, int id)
+        private string getChunkName(int videoId, string fileName, int chunkNo, int numChunks)
         {
+            return videoId + "-" + numChunks + "-" + chunkNo + "-" + fileName;
         }
 
         [HttpPost]
         public JsonResult UploadVideoChunkAjax()
         {
-            HttpPostedFileBase fileChunk = Request.Files[0];
+            HttpPostedFileBase chunk = Request.Files[0];
 
             string videoFileName;
             int id, chunkCount, chunkNo;
-
-            if (!ExtractInfoFromFileChunkName(fileChunk.FileName, out videoFileName, out id, out chunkCount, out chunkNo))
-            {
-                // delete directory
+            if (!ExtractInfoFromFileChunkName(chunk.FileName, out videoFileName, out id, out chunkCount, out chunkNo))
                 return Json(String.Format("file chunk has invalid name"));
-            }
 
-            if (fileChunk == null || fileChunk.ContentLength == 0)
-            {
-                // delete directory
+            if (chunk == null || chunk.ContentLength == 0)
                 return Json(String.Format("no file uploaded"));
-            }
 
             Video video = _dbContext.Videos.SingleOrDefault(v => v.Id == id);
             if (video == null)
-            {
-                // delete directory
                 return Json(String.Format("Video with id {0} not found", id));
-            }
 
-            string chunkName = Path.GetFileName(fileChunk.FileName);
-            string chunkPath = Path.Combine(Server.MapPath("~/Storage/"), chunkName);
+            string chunksDirPath, mergeDirPath;
+            getVideoDirPaths(videoFileName, id, out chunksDirPath, out mergeDirPath);
 
-            fileChunk.SaveAs(chunkPath);
-            /*
-            // TODO video processing with ffmpeg (extract thumbnail) async
-            try
-            {
-                Process proc = new Process
-                {
-                    StartInfo = new ProcessStartInfo
-                    {
-                        FileName = "C:/ffmpeg/bin/ffmpeg.exe",
-                        Arguments = "-help",
-                        UseShellExecute = false,
-                        RedirectStandardOutput = true,
-                        CreateNoWindow = true
-                    }
-                };
-
-                proc.Start();
-                Debug.WriteLine("---------------------success----------------------");
-                while (!proc.StandardOutput.EndOfStream)
-                {
-                    string line = proc.StandardOutput.ReadLine();
-                    Console.WriteLine(line);
-                    Debug.WriteLine(line);
-                }
-            }
-            catch (Exception e) {
-                Debug.WriteLine("```````````````````````Exception Caught````````````````````````````````\r\n{0}", e);
-            }
-
-            video.VideoFileName = videoFileName;
-            video.ImageFileName = Path.GetFileNameWithoutExtension(videoFileName) + ".jpg";
-            video.Length = 20;
-            */
-
-            if (chunkCount == chunkNo)
-                MergeChunks(videoFileName, id);
-
+            string chunkName = Path.GetFileName(chunk.FileName);
+            string chunkPath = Path.Combine(chunksDirPath, chunkName);
+            chunk.SaveAs(chunkPath);
             return Json(String.Format("server: file {0} uploaded successfully for video {1}", chunkName, id));
         }
 

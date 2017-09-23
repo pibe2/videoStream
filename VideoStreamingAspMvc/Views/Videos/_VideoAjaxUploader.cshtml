@@ -39,7 +39,6 @@
             $("#fileNameLabel").val(file.name); // update fileNameLabel
     }
 
-
     function uploadVideo() {
         let fileInput = $("#videoFile")[0];
         let file = fileInput.files[0]
@@ -50,7 +49,6 @@
             console.log("try uploading a non empty file not greater than 4GB in size");
             return;
         }
-
         uploadVideoXhr(file);
     }
 
@@ -58,95 +56,101 @@
         let regChunkSize = 50 * 1024 * 1024; // split file into 50mb chunks
         let numRegChunks = Math.trunc(file.size / regChunkSize);
         let numChunks = numRegChunks;
-
         let lastChunkSize = file.size - (numRegChunks * regChunkSize);
-
         if (lastChunkSize > 0)
             numChunks = numRegChunks + 1;
-
-        let chunksInfo = [];
-
-        // create tasks 
+        // create upload tasks 
+        let chunkUploadTasks = [];
         // can't push in naked promises since promises start executing as soon as they're created
         // <see:https://pouchdb.com/2015/05/18/we-have-a-problem-with-promises.html advanced mistake #3>
+        for (let i = 0; i < numRegChunks; i++)
+            chunkUploadTasks.push((resolve, reject) =>
+                uploadChunkXhr(file, i * regChunkSize, (i + 1) * regChunkSize, i + 1, numChunks, resolve, reject)
+            );
+        if (lastChunkSize > 0)
+            chunkUploadTasks.push( (resolve, reject) =>
+                uploadChunkXhr(file, file.size-lastChunkSize, file.size, numChunks, numChunks, resolve, reject)
+            );
 
-        for (let i = 0; i < numRegChunks; i++) {
-            chunksInfo.push({
-                    chunkStart: i * regChunkSize,
-                    chunkStop: (i + 1) * regChunkSize,
-                    chunkNo: i + 1
-            });
-        }
-        // add potential last chunk task
-        if (lastChunkSize > 0) {    // upload last chunk
-            chunksInfo.push({
-                    chunkStart: file.size - lastChunkSize,
-                    chunkStop: file.size,
-                    chunkNo: numChunks
-            });
-        }
-
-        // make sure all but the last chunk are uploaded, then upload the last one so server knows when to merge
-        let firstChunksInfo = chunksInfo.slice(0, chunksInfo.length - 1);
-        let lastChunkInfo = chunksInfo[chunksInfo.length - 1];
-
-        let firstPromises = firstChunksInfo.map((info) =>
-            // promises start executing on creation
-            new Promise((resolve, reject) =>
-                uploadChunkXhr(file, info.chunkStart, info.chunkStop, info.chunkNo, numChunks, resolve, reject)
-            )
-        );
-
-        Promise.all(firstPromises)
-            .then((resolveResults) => {
-                console.log("done with the first chunks, starting the last");
-                console.log(resolveResults);
-                // promises start executing on creation, and want to have proper resolve and reject funcs
+        Promise.resolve()
+            .then(() => {
+                console.log("sending start upload control message");
                 return new Promise((resolve, reject) =>
-                    uploadChunkXhr(file, lastChunkInfo.chunkStart, lastChunkInfo.chunkStop, lastChunkInfo.chunkNo, numChunks, resolve, reject)
+                    sendControlXhr(false, file, numChunks, resolve, reject)
                 );
-            })
-            .catch(console.log.bind(console));
+            }).then(() => {
+                console.log("chunks uploading");
+                return Promise.all(chunkUploadTasks.map((task) =>
+                    new Promise((resolve, reject) =>
+                        task(resolve, reject)
+                    )
+                ));
+            }).then(() => {
+                console.log("sending merge upload control message");
+                return new Promise((resolve, reject) =>
+                    sendControlXhr(true, file, numChunks, resolve, reject)
+                );
+            }).catch(console.log.bind(console));
+    }
+
+    function sendControlXhr(isMergeControl, file, numChunks, resolve, reject) {
+        let xhr = new XMLHttpRequest();
+
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState === 4 && xhr.status === 200) {
+                console.log(xhr.responseText);
+                resolve("control message successfully posted")
+            }
+        }
+        xhr.addEventListener("error", function (e) {
+            console.log("error posting control message: ");
+            console.log(e);
+            reject("control message error: " + e);
+        });
+        let postUrl = "@Url.Action("UploadControl", "Videos")"
+        xhr.open("POST", postUrl);
+        xhr.setRequestHeader("Accept", "application/json")
+        xhr.setRequestHeader("Content-type", "application/json")
+
+        let data = JSON.stringify({
+            videoId: @Model.Id, 
+            filename: file.name,
+            numChunks: numChunks,
+            isMergeControl: isMergeControl
+        });
+        xhr.send(data);
     }
 
     function uploadChunkXhr(file, chunkStart, chunkEnd, chunkNo, numChunks, resolve, reject) {
         // file.slice doesn't actually exclude tha last byte (at chunk end)
         let chunk = file.slice(chunkStart, chunkEnd);
-
         let chunkName = "@Model.Id" + "-" + numChunks + "-" + chunkNo + "-" + file.name;
-
         let formData = new FormData();
         formData.append('file', chunk, chunkName);
 
-        let postUrl = $("#theForm").attr("action");
-
         let xhr = new XMLHttpRequest();
-
         xhr.onreadystatechange = function () {
             if (xhr.readyState === 4 && xhr.status === 200) {
                 console.log(xhr.responseText);
                 resolve("chunk posted successfully done")
             }
         }
-
         xhr.upload.addEventListener("progress", function (e) {
             // it will never come inside here
             if (e.lengthComputable) {
-                console.log("progress:", parseInt((e.loaded / e.total) * 100)+"%", "for chunk", chunkNo, "out of", numChunks);
+                console.log("progress:", parseInt((e.loaded / e.total) * 100) + "%", "for chunk", chunkNo, "out of", numChunks);
             }
-            else {
+            else
                 console.log("upload progress is not computable");
-            }
-
         });
-
         xhr.addEventListener("error", function (e) {
             console.log("upload error: ");
             console.log(e);
             reject("upload error: " + e);
         });
 
-        xhr.open("POST", postUrl, true); // true = run it synchronously
+        let postUrl = $("#theForm").attr("action");
+        xhr.open("POST", postUrl);
         xhr.send(formData);
     }
 

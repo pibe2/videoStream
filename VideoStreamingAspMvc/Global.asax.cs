@@ -16,6 +16,9 @@ namespace VideoStreamingAspMvc
             FilterConfig.RegisterGlobalFilters(GlobalFilters.Filters);
             RouteConfig.RegisterRoutes(RouteTable.Routes);
             BundleConfig.RegisterBundles(BundleTable.Bundles);
+
+            // mine so we can map posted json data to controller parameters
+            ValueProviderFactories.Factories.Add(new JsonValueProviderFactory());
         }
     }
 }
