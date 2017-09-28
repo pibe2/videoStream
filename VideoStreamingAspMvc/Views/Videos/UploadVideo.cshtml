@@ -7,6 +7,175 @@
 
 <h2 class="h2">Upload Video</h2>
 
-@{
-    Html.RenderPartial("_VideoAjaxUploader");    // faster than @Html.Partial() apparently
+
+@using (Html.BeginForm(
+    actionName: "UploadVideoChunkAjax",
+    controllerName: "Videos",
+    method: FormMethod.Post,
+    htmlAttributes: new { @class = "form-horizontal", @enctype = "multipart/form-data", @role = "form", @id = "theForm" }))
+{
+    <div class="form-group row">
+        <div class="col-sm-offset-2">
+            <div class="file-control-wide">
+                <label class="btn btn-default text-center" for="videoFile">
+                    <input id="videoFile" name="videoFile" type="file" style="display:none"
+                        onchange="videoFileSelected(this)" />
+                    Browse
+                </label>
+                <input type="text" class="file-control-text" id="fileNameLabel" disabled />
+            </div>
+        </div>
+    </div>
+
+    <div class="form-group">
+        @Html.HiddenFor(m => m.Id)
+
+        <div class="col-sm-offset-2">
+            <button type="button" class="btn btn-primary" onclick="uploadVideo(); return false;">Upload</button>
+            @Html.ActionLink("Save Without Video", "Index", "Videos", new { @class = "btn btn-default" })
+        </div>
+    </div>
+}
+
+
+@section scripts {
+    <script type="text/javascript">
+
+        function videoFileSelected(fileInput) {
+            let file = fileInput.files[0];
+            if (file)
+                $("#fileNameLabel").val(file.name); // update fileNameLabel
+        }
+
+        function uploadVideo() {
+            let fileInput = $("#videoFile")[0];
+            let file = fileInput.files[0]
+
+            let maxFileSize = 4 * 1024 * 1024 * 1024; // 4GB
+            if (!file || file.size == 0 || file.size > maxFileSize) {
+                console.log("empty/no file uploaded, or file size too large (larger than 4GB)");
+                console.log("try uploading a non empty file not greater than 4GB in size");
+                return;
+            }
+            uploadVideoXhr(file);
+        }
+
+        function uploadVideoXhr(file) {
+            let regChunkSize = 50 * 1024 * 1024; // split file into 50mb chunks
+            let numRegChunks = Math.trunc(file.size / regChunkSize);
+            let numChunks = numRegChunks;
+            let lastChunkSize = file.size - (numRegChunks * regChunkSize);
+            if (lastChunkSize > 0)
+                numChunks = numRegChunks + 1;
+            // create upload tasks 
+            let chunkUploadTasks = [];
+            // can't push in naked promises since promises start executing as soon as they're created
+            // <see:https://pouchdb.com/2015/05/18/we-have-a-problem-with-promises.html advanced mistake #3>
+            for (let i = 0; i < numRegChunks; i++)
+                chunkUploadTasks.push((resolve, reject) =>
+                    uploadChunkXhr(file, i * regChunkSize, (i + 1) * regChunkSize, i + 1, numChunks, resolve, reject)
+                );
+            if (lastChunkSize > 0)
+                chunkUploadTasks.push( (resolve, reject) =>
+                    uploadChunkXhr(file, file.size-lastChunkSize, file.size, numChunks, numChunks, resolve, reject)
+                );
+
+            Promise.resolve()
+                .then(() => {
+                    console.log("sending start upload control message");
+                    return new Promise((resolve, reject) =>
+                        sendControlXhr(false, file, numChunks, resolve, reject)
+                    );
+                }).then(() => {
+                    console.log("chunks uploading");
+                    return Promise.all(chunkUploadTasks.map((task) =>
+                        new Promise((resolve, reject) =>
+                            task(resolve, reject)
+                        )
+                    ));
+                }).then(() => {
+                    console.log("sending merge upload control message");
+                    return new Promise((resolve, reject) =>
+                        sendControlXhr(true, file, numChunks, resolve, reject)
+                    );
+                }).catch(console.log.bind(console));
+        }
+
+        function sendControlXhr(isMergeControl, file, numChunks, resolve, reject) {
+            let xhr = new XMLHttpRequest();
+
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    console.log(xhr.responseText);
+                    resolve("control message successfully posted")
+                }
+            }
+            xhr.addEventListener("error", function (e) {
+                console.log("error posting control message: ");
+                console.log(e);
+                reject("control message error: " + e);
+            });
+            let postUrl = "@Url.Action("UploadControl", "Videos")"
+            xhr.open("POST", postUrl);
+            xhr.setRequestHeader("Accept", "application/json")
+            xhr.setRequestHeader("Content-type", "application/json")
+
+            let data = JSON.stringify({
+                videoId: @Model.Id, 
+                filename: file.name,
+                numChunks: numChunks,
+                isMergeControl: isMergeControl
+            });
+            xhr.send(data);
+        }
+
+        function uploadChunkXhr(file, chunkStart, chunkEnd, chunkNo, numChunks, resolve, reject) {
+            // file.slice doesn't actually exclude tha last byte (at chunk end)
+            let chunk = file.slice(chunkStart, chunkEnd);
+            let chunkName = "@Model.Id" + "-" + numChunks + "-" + chunkNo + "-" + file.name;
+            let formData = new FormData();
+            formData.append('file', chunk, chunkName);
+
+            let xhr = new XMLHttpRequest();
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    console.log(xhr.responseText);
+                    resolve("chunk posted successfully done")
+                }
+            }
+            xhr.upload.addEventListener("progress", function (e) {
+                // it will never come inside here
+                if (e.lengthComputable) {
+                    console.log("progress:", parseInt((e.loaded / e.total) * 100) + "%", "for chunk", chunkNo, "out of", numChunks);
+                }
+                else
+                    console.log("upload progress is not computable");
+            });
+            xhr.addEventListener("error", function (e) {
+                console.log("upload error: ");
+                console.log(e);
+                reject("upload error: " + e);
+            });
+
+            let postUrl = $("#theForm").attr("action");
+            xhr.open("POST", postUrl);
+            xhr.send(formData);
+        }
+    </script>
+
+    <script src="~/Scripts/jquery.signalR-2.2.2.js"></script>
+    <script src="~/signalr/hubs"></script>
+
+    <script>
+        $(function () {
+            let signalRConn = $.connection.uploadHub;
+            signalRConn.client.addNewMessageToPage = function (name, message) {
+                console.log("name: ", name, "message: ", message)
+            }
+
+            $.connection.hub.start().done(function () {
+                signalRConn.server.send("client", "message from client");
+            });
+        });
+    </script>
 }
